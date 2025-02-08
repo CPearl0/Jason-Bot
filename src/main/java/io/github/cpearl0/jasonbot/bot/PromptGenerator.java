@@ -72,9 +72,9 @@ public class PromptGenerator {
             prompt.append("\n玩家装备：");
             prompt.append(armor);
 
-            var inventory = player.getInventory();
-            prompt.append("\n玩家背包：");
-            prompt.append(inventory);
+//            var inventory = player.getInventory();
+//            prompt.append("\n玩家背包：");
+//            prompt.append(inventory.items);
 
             var block = player.pick(20.0, 0.0F, false);
             var liquid = player.pick(20.0, 0.0F, true);
