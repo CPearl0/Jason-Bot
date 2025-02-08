@@ -12,12 +12,14 @@ import com.google.gson.*;
 import com.mojang.authlib.GameProfile;
 import io.github.cpearl0.jasonbot.Config;
 import io.github.cpearl0.jasonbot.JasonBot;
+import net.minecraft.network.chat.Component;
 import net.minecraft.server.MinecraftServer;
+import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.common.util.FakePlayer;
 import org.jetbrains.annotations.NotNull;
 
-public class AsyncDeepSeekChat {
-    private static final String API_ENDPOINT = "https://api.deepseek.com/v1/chat/completions";
+public class AsyncAIChat {
+    private static final String API_ENDPOINT = Config.APIEndpoint;
 
     private static ExecutorService executor;
     private static final Gson gson = new Gson();
@@ -41,11 +43,11 @@ public class AsyncDeepSeekChat {
         chatHistory.clear();
     }
 
-    public static CompletableFuture<String> chatAsync(String userName, String userMessage) {
+    public static CompletableFuture<String> chatAsync(ServerPlayer player, String userMessage) {
         return CompletableFuture.supplyAsync(() -> {
             try {
                 // 构建请求体
-                JsonObject requestBody = getRequestBody(userName, userMessage);
+                JsonObject requestBody = getRequestBody(player, userMessage);
 
                 // 发送请求
                 HttpURLConnection connection = createConnection();
@@ -61,14 +63,17 @@ public class AsyncDeepSeekChat {
         }, executor);
     }
 
-    private static @NotNull JsonObject getRequestBody(String userName, String userMessage) {
+    private static @NotNull JsonObject getRequestBody(ServerPlayer player, String userMessage) {
+        var userName = player.getDisplayName().getString();
+
         JsonObject requestBody = new JsonObject();
-        requestBody.addProperty("model", Config.DeepSeekModel);
+        requestBody.addProperty("model", Config.AIModel);
         requestBody.addProperty("temperature", Config.temperature);
+        requestBody.addProperty("presence_penalty", Config.presencePenalty);
 
         chatHistory.addUserMessage(userName, userMessage);
 
-        JsonArray messages = gson.toJsonTree(chatHistory.getFullHistory()).getAsJsonArray();
+        JsonArray messages = gson.toJsonTree(chatHistory.getFullHistory(player)).getAsJsonArray();
 
         requestBody.add("messages", messages);
         return requestBody;
@@ -79,7 +84,7 @@ public class AsyncDeepSeekChat {
         HttpURLConnection connection = (HttpURLConnection) url.openConnection();
         connection.setRequestMethod("POST");
         connection.setRequestProperty("Content-Type", "application/json");
-        connection.setRequestProperty("Authorization", "Bearer " + Config.DeepSeekAPIKey);
+        connection.setRequestProperty("Authorization", "Bearer " + Config.APIKey);
         connection.setDoOutput(true);
         return connection;
     }
@@ -88,6 +93,9 @@ public class AsyncDeepSeekChat {
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(connection.getInputStream(), StandardCharsets.UTF_8))) {
             JsonObject response = gson.fromJson(reader, JsonObject.class);
+            if (response == null)
+                return Component.translatable("info.jasonbot.APIfailed").getString();
+
             return response.getAsJsonArray("choices")
                     .get(0).getAsJsonObject()
                     .getAsJsonObject("message")
@@ -95,8 +103,8 @@ public class AsyncDeepSeekChat {
         }
     }
 
-    public static void chat(String userName, String userMessage, Consumer<String> responseHandler) {
-        chatAsync(userName, userMessage)
+    public static void chat(ServerPlayer player, String userMessage, Consumer<String> responseHandler) {
+        chatAsync(player, userMessage)
                 .thenAccept(response -> {
                     responseHandler.accept(response);
                     chatHistory.addAssistantMessage(jasonBotPlayer.getDisplayName().getString(), response);

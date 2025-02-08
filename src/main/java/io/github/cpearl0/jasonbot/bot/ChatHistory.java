@@ -1,6 +1,7 @@
 package io.github.cpearl0.jasonbot.bot;
 
 import io.github.cpearl0.jasonbot.Config;
+import net.minecraft.server.level.ServerPlayer;
 
 import java.util.ArrayList;
 import java.util.Deque;
@@ -14,35 +15,33 @@ public class ChatHistory {
     public record ChatMessage(String role, String name, String content) {
     }
 
-    private ChatMessage systemMessage;
     private final Deque<ChatMessage> history = new ConcurrentLinkedDeque<>();
     public final int maxSize;
 
     public ChatHistory(int maxSize) {
         this.maxSize = maxSize;
-        initializeSystemMessage();
     }
 
     public ChatHistory() {
         this(Config.maxHistorySize);
     }
 
-    private void initializeSystemMessage() {
-        systemMessage = new ChatMessage("system", "system", Config.systemPrompt);
-    }
-
-    public List<ChatMessage> getFullHistory() {
+    public List<ChatMessage> getFullHistory(ServerPlayer player) {
         List<ChatMessage> full = new ArrayList<>();
+
+        var systemMessage = new ChatMessage("system", "system", PromptGenerator.generatePrompt(player));
         full.add(systemMessage); // 保证system始终在首位
-        full.addAll(history);
+        if (maxSize > 0)
+            full.addAll(history);
         return full;
     }
 
     public void addMessage(String role, String name, String content) {
+        if (maxSize == 0)
+            return;
         // 自动移除旧消息保持队列长度
-        if (history.size() >= maxSize) {
+        if (history.size() >= maxSize)
             history.removeFirst(); // 移除最旧的消息
-        }
         history.addLast(new ChatMessage(role, name, content));
     }
 
