@@ -46,7 +46,7 @@ public class Config {
 
     private static final ForgeConfigSpec.ConfigValue<List<? extends String>> WAKE_NAMES = BUILDER
             .comment("Names to wake up the bot")
-            .defineList("wakeNames", List.of("Jason", "杰森"), o -> true);
+            .defineList("wakeNames", List.of("Jason", "杰森"), o -> !((String)o).startsWith("/"));
 
     private static final ForgeConfigSpec.BooleanValue USE_IN_GAME_INFORMATION = BUILDER
             .comment("Whether to provide in-game information to the bot")

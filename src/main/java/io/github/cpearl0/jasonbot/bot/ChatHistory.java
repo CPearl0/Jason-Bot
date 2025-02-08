@@ -31,16 +31,20 @@ public class ChatHistory {
 
         var systemMessage = new ChatMessage("system", "system", PromptGenerator.generatePrompt(player));
         full.add(systemMessage); // 保证system始终在首位
-        if (maxSize > 0)
-            full.addAll(history);
+        full.addAll(history);
         return full;
     }
 
     public void addMessage(String role, String name, String content) {
-        if (maxSize == 0)
+        if (maxSize == 0) {
+            if (role.equals("user")) {
+                history.clear();
+                history.addLast(new ChatMessage(role, name, content));
+            }
             return;
+        }
         // 自动移除旧消息保持队列长度
-        if (history.size() >= maxSize)
+        if (history.size() >= maxSize + 1)
             history.removeFirst(); // 移除最旧的消息
         history.addLast(new ChatMessage(role, name, content));
     }
